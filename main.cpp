@@ -13,10 +13,8 @@ private:
     std::map<std::string, char> morseToChar;
 
     void addMapping(char c, std::string standard) {
-        // ´æ´¢ÓÃÓÚÒôÆµÂß¼­µÄÔ­Ê¼µã»®
         charToMorse[tolower(c)] = standard;
         
-        // Éú³ÉÓÃÓÚ½âÃÜµÄ±äÖÖµçÂë¶ÔÕÕ±í (ÀýÈç: ".-" -> "liqui")
         std::string variant = "";
         for(size_t i=0; i<standard.length(); ++i) {
             variant += (standard[i] == '.' ? "li" : "qui");
@@ -43,21 +41,26 @@ private:
 public:
     MorseSystem() { init(); }
 
-    // --- ¼ÓÃÜÓëºÏ³É¹¦ÄÜ ---
+    // --- åŠ å¯†ä¸ŽåˆæˆåŠŸèƒ½ ---
     void encryptAndAudio() {
         std::string text;
-        std::cout << "ÇëÊäÈëÔ­ÎÄ: ";
+        std::cout << "è¯·è¾“å…¥åŽŸæ–‡: ";
         std::getline(std::cin, text);
 
         _mkdir("output");
+        system("ffmpeg -f lavfi -i anullsrc=r=44100:cl=mono -t 0.5 -y output/pause.wav > nul 2>&1");
+    
         std::vector<std::string> audioFiles;
         std::string encodedText = "";
-
+    
         for (size_t i = 0; i < text.length(); ++i) {
             char ch = tolower(text[i]);
+        
             if (ch == ' ') {
                 encodedText += " "; 
-            } else if (charToMorse.count(ch)) {
+                audioFiles.push_back("pause.wav");
+            }
+            else if (charToMorse.count(ch)) {
                 std::string code = charToMorse[ch];
                 for (size_t j = 0; j < code.length(); ++j) {
                     if (code[j] == '.') {
@@ -68,40 +71,43 @@ public:
                         audioFiles.push_back("qui.wav");
                     }
                 }
-                if (i + 1 < text.length() && text[i+1] != ' ') {
-                    encodedText += "d";
-                    audioFiles.push_back("d.wav");
-                }
+                // æ¯ä¸ªå­—ç¬¦åŽåŠ  dï¼Œä¸å¸¦ç©ºæ ¼
+                encodedText += "d"; 
+                audioFiles.push_back("d.wav");
             }
         }
 
-        std::cout << "\n[¼ÓÃÜÃÜÎÄ]: " << encodedText << std::endl;
+        std::cout << "\n[åŠ å¯†å¯†æ–‡]: " << encodedText << std::endl;
 
         std::ofstream listFile("output/list.txt");
-        for (size_t k = 0; k < audioFiles.size(); ++k) 
-            listFile << "file '../" << audioFiles[k] << "'\n";
+        for (size_t k = 0; k < audioFiles.size(); ++k) {
+            if (audioFiles[k] == "pause.wav") {
+                listFile << "file 'pause.wav'\n";
+            } else {
+                listFile << "file '../" << audioFiles[k] << "'\n";
+            }
+        }
         listFile.close();
 
-        std::cout << "[ÌáÊ¾]: ÕýÔÚºÏ³ÉÒôÆµ..." << std::endl;
+        std::cout << "[æç¤º]: æ­£åœ¨åˆæˆéŸ³é¢‘..." << std::endl;
         system("ffmpeg -f concat -safe 0 -i output/list.txt -y -c copy output/output.wav > nul 2>&1");
-        std::cout << "[Íê³É]: ½á¹ûÒÑ´æÖÁ output/output.wav\n" << std::endl;
-    }
+        std::cout << "[å®Œæˆ]: ç»“æžœå·²å­˜è‡³ output/output.wav\n" << std::endl;
+    } 
 
-    // --- ½âÃÜ¹¦ÄÜ ---
+    // --- è§£å¯†åŠŸèƒ½ ---
     void decrypt() {
         std::string code;
-        std::cout << "ÇëÊäÈëÃÜÎÄ (×ÖÄ¸¼äÓÃd·Ö¸ô£¬µ¥´Ê¼äÓÃ¿Õ¸ñ): ";
+        std::cout << "è¯·è¾“å…¥å¯†æ–‡ (å­—æ¯é—´ç”¨dåˆ†éš”ï¼Œå•è¯é—´ç”¨ç©ºæ ¼): ";
         std::getline(std::cin, code);
 
         std::string result = "";
         std::stringstream ssWords(code);
         std::string word;
 
-        while (ssWords >> word) { // °´¿Õ¸ñÇÐ·Öµ¥´Ê
+        while (ssWords >> word) { 
             std::stringstream ssLetters(word);
             std::string letterSegment;
             
-            // °´ 'd' ÇÐ·Ö×ÖÄ¸
             while (std::getline(ssLetters, letterSegment, 'd')) {
                 if (morseToChar.count(letterSegment)) {
                     result += morseToChar[letterSegment];
@@ -109,29 +115,27 @@ public:
             }
             result += " ";
         }
-        std::cout << "\n[½âÃÜÔ­ÎÄ]: " << result << "\n" << std::endl;
+        std::cout << "\n[è§£å¯†åŽŸæ–‡]: " << result << "\n" << std::endl;
     }
-};
+}; 
 
 int main() {
     MorseSystem sys;
     std::string choice;
-
     while (true) {
-        std::cout << "======= Ò»ÖÖ»ùÓÚÀÏÉß´ó½ÐLIQUIIIIIIIIDµÄ±äÖÖÄ¦¶ûË¹µçÂë =======" << std::endl;
-        std::cout << "1. ¼ÓÃÜÎÄ±¾²¢Éú³ÉÒôÆµ\n2. ½âÃÜÃÜÎÄ\n3. ÍË³ö³ÌÐò" << std::endl;
-        std::cout << "ÇëÑ¡Ôñ²Ù×÷ (1-3): ";
+        std::cout << "======= LIQUIIIIIIIID å˜ç§æ‘©å°”æ–¯ç³»ç»Ÿ =======" << std::endl;
+        std::cout << "1. åŠ å¯†æ–‡æœ¬å¹¶ç”ŸæˆéŸ³é¢‘\n2. è§£å¯†å¯†æ–‡\n3. é€€å‡ºç¨‹åº" << std::endl;
+        std::cout << "è¯·é€‰æ‹©æ“ä½œ (1-3): ";
         std::getline(std::cin, choice);
 
         if (choice == "1") sys.encryptAndAudio();
         else if (choice == "2") sys.decrypt();
         else if (choice == "3") break;
-        else std::cout << "ÊäÈëÎÞÐ§£¬ÇëÖØÐÂÑ¡Ôñ¡£" << std::endl;
+        else std::cout << "è¾“å…¥æ— æ•ˆï¼Œè¯·é‡æ–°é€‰æ‹©ã€‚" << std::endl;
         
-        std::cout << "°´»Ø³µ¼ü¼ÌÐø..." << std::endl;
+        std::cout << "æŒ‰å›žè½¦é”®ç»§ç»­..." << std::endl;
         std::cin.get();
-        system("cls"); // ÇåÆÁ£¬ÈÃ½çÃæÕû½à
+        system("cls"); 
     }
-
     return 0;
 }
